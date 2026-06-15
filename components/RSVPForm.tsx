@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { getGuestByCode, submitRsvp } from '@/actions/rsvp';
 import { Loader2, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import StepIndicator from '@/components/StepIndicator';
 
 type Guest = {
   id: string;
@@ -67,16 +68,28 @@ export default function RSVPForm() {
     setIsLoading(false);
   };
 
+  const handleReset = () => {
+    setStep(1);
+    setGuest(null);
+    setCode('');
+    setError(null);
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto bg-card rounded-[var(--radius-xl)] shadow-sm border border-border p-5 sm:p-8 md:p-12 animate-in fade-in zoom-in-95 duration-500">
-      
+
       {step !== 3 && (
-        <div className="text-center mb-6 md:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-serif text-primary mb-2 sm:mb-3">Confirmação de Presença</h1>
-          <p className="text-foreground/80 text-sm sm:text-base w-full max-w-lg mx-auto">
-            Ficaremos muito felizes em ter você conosco neste dia tão especial.
-          </p>
-        </div>
+        <>
+          <div className="text-center mb-6 md:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-serif text-primary mb-2 sm:mb-3">
+              Confirmação de Presença
+            </h1>
+            <p className="text-foreground/80 text-sm sm:text-base max-w-lg mx-auto">
+              Ficaremos muito felizes em ter você conosco neste dia tão especial.
+            </p>
+          </div>
+          <StepIndicator currentStep={step} totalSteps={2} />
+        </>
       )}
 
       {error && (
@@ -86,21 +99,23 @@ export default function RSVPForm() {
         </div>
       )}
 
-      {/* ESTADO 1: Inserção do Código */}
       {step === 1 && (
         <form onSubmit={handleSearchCode} className="space-y-4 sm:space-y-5 w-full max-w-md mx-auto">
           <div>
-            <label htmlFor="code" className="sr-only">Digite seu código individual</label>
+            <label htmlFor="code" className="block text-sm font-medium text-muted-foreground mb-2 text-center">
+              Digite seu código individual
+            </label>
             <input
               id="code"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="Digite seu código (Ex: A7X9P)"
+              placeholder="Ex: A7X9P"
               className="w-full h-14 px-4 bg-input-background border border-border rounded-lg text-center text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/60 placeholder:tracking-normal placeholder:text-sm"
               required
               maxLength={10}
               disabled={isLoading}
+              autoComplete="off"
             />
           </div>
           <button
@@ -123,12 +138,11 @@ export default function RSVPForm() {
       {step === 2 && guest && (
         <div className="space-y-6 md:space-y-8 animate-in slide-in-from-right-4 duration-300">
           <div className="p-6 sm:p-8 rounded-xl border border-border bg-background text-center space-y-6 max-w-md mx-auto">
-            
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground uppercase tracking-wider">Convidado</p>
               <h2 className="font-serif text-2xl text-foreground">{guest.name}</h2>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
@@ -142,7 +156,7 @@ export default function RSVPForm() {
                 <CheckCircle2 className="w-5 h-5" />
                 Eu irei
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => handleToggleAttendance(false)}
@@ -166,11 +180,11 @@ export default function RSVPForm() {
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmar Presença'}
             </button>
-            
+
             <button
-               onClick={() => { setStep(1); setGuest(null); setCode(''); }}
-               disabled={isLoading}
-               className="w-full py-2 sm:py-3 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              onClick={handleReset}
+              disabled={isLoading}
+              className="w-full py-2 sm:py-3 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             >
               Voltar / Inserir outro código
             </button>
@@ -188,7 +202,7 @@ export default function RSVPForm() {
             Sua resposta foi registrada com sucesso.
           </p>
           <button
-            onClick={() => { setStep(1); setGuest(null); setCode(''); }}
+            onClick={handleReset}
             className="mt-6 sm:mt-8 px-6 py-2.5 bg-muted text-foreground rounded-lg font-medium hover:bg-muted-foreground/20 transition-colors"
           >
             Responder por outra pessoa

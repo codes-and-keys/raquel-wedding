@@ -1,169 +1,232 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  X, CheckCircle2, HeartHandshake, QrCode, 
-  Loader2, MessageSquareHeart, Ticket, Copy 
-} from 'lucide-react';
-import { reserveGift } from '@/actions/gifts';
+import { X, HeartHandshake, Loader2, QrCode, CreditCard } from 'lucide-react';
 import { Gift } from '@/types/gift';
+import { formatPrice } from '@/lib/formatters';
+import PixPayment from '@/components/payment/PixPayment';
+import CardPayment from '@/components/payment/CardPayment';
+
+type Step = 'SELECT' | 'PIX_FORM' | 'PIX_PAYMENT' | 'CARD';
 
 interface GiftModalProps {
   gift: Gift;
   onClose: () => void;
 }
 
+interface PixResult {
+  paymentId: string;
+  pixQrCode: string;
+  pixCopyPaste: string;
+}
+
+interface BuyerState {
+  name: string;
+  email: string;
+  cpf: string;
+  phone: string;
+}
+
 export default function GiftModal({ gift, onClose }: GiftModalProps) {
-  const [isReserving, setIsReserving] = useState(false);
-  const [step, setStep] = useState<'FORM' | 'SUCCESS'>('FORM');
+  const [step, setStep] = useState<Step>('SELECT');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedPix, setCopiedPix] = useState(false);
+  const [pixResult, setPixResult] = useState<PixResult | null>(null);
+  const [buyer, setBuyer] = useState<BuyerState>({ name: '', email: '', cpf: '', phone: '' });
 
-  const [code, setCode] = useState('');
-  const [confirmedGuestName, setConfirmedGuestName] = useState(''); // Armazena o nome retornado pelo banco
-  const [message, setMessage] = useState('');
-
-  const formatPrice = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  };
-
-  const handleCopyPix = () => {
-    navigator.clipboard.writeText('123.456.789-00');
-    setCopiedPix(true);
-    setTimeout(() => setCopiedPix(false), 3000);
-  };
-
-  const handleConfirmReservation = async (e: React.SubmitEvent) => {
+  const handleCreatePix = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsReserving(true);
+    setIsLoading(true);
     setError(null);
 
-    const result = await reserveGift({
-      giftId: gift.id,
-      code: code.trim().toUpperCase(),
-      message,
-    });
+    try {
+      const res = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ giftId: gift.id, buyer, method: 'PIX' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-    if (result.error) {
-      setError(result.error);
-      setIsReserving(false);
-    } else {
-      setConfirmedGuestName(result.guestName || '');
-      setStep('SUCCESS');
-      setIsReserving(false);
+      setPixResult({
+        paymentId: data.paymentId,
+        pixQrCode: data.pixQrCode,
+        pixCopyPaste: data.pixCopyPaste,
+      });
+      setStep('PIX_PAYMENT');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao gerar PIX');
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleReset = () => {
+    setStep('SELECT');
+    setPixResult(null);
+    setError(null);
+  };
+
   return (
-    <div className="m-0 fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-card w-full max-w-xl rounded-[var(--radius-xl)] shadow-2xl overflow-hidden relative border border-border animate-in zoom-in-95 duration-300">
-        
-        <button 
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-card w-full sm:max-w-xl sm:rounded-[var(--radius-xl)] rounded-t-[var(--radius-xl)] shadow-2xl relative border border-border animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 max-h-[92svh] overflow-y-auto">
+
+        <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground"
+          className="absolute top-4 right-4 p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground z-10"
+          aria-label="Fechar"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {step === 'FORM' ? (
-          <form onSubmit={handleConfirmReservation} className="p-6 md:p-8 space-y-6">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <HeartHandshake className="w-6 h-6 text-primary" />
-              </div>
-              <h2 className="text-2xl font-serif text-primary">Reservar Presente</h2>
-              <p className="text-sm text-muted-foreground">
-                Preencha os detalhes abaixo para nos enviar sua mensagem e reservar o item.
-              </p>
-            </div>
+        <div className="p-6 md:p-8 space-y-6">
 
-            {error && (
-              <div className="p-3 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm rounded-r flex items-center gap-2">
-                <X className="w-4 h-4" /> {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="p-4 bg-muted/30 rounded-lg flex items-center justify-between border border-border/50">
-                <div className="text-sm font-medium">{gift.name}</div>
-                <div className="font-serif text-primary">{formatPrice(gift.price)}</div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="relative">
-                  <Ticket className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-                  <input 
-                    required
-                    type="text" 
-                    placeholder="Seu Código (Ex: A7X9P)" 
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/40 outline-none transition-all uppercase tracking-widest font-mono"
-                    maxLength={10}
-                  />
-                </div>
-                <div className="relative">
-                  <MessageSquareHeart className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-                  <textarea 
-                    rows={3}
-                    placeholder="Escreva uma mensagem para os noivos..." 
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/40 outline-none transition-all resize-none"
-                  />
-                </div>
-              </div>
+          {/* Cabeçalho com nome e valor do presente */}
+          <div className="text-center space-y-3 pr-8">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <HeartHandshake className="w-6 h-6 text-primary" />
             </div>
-
-            <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-widest text-primary/70">Instruções de PIX</span>
-                <QrCode className="w-4 h-4 text-primary/50" />
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 bg-white p-3 rounded-lg border border-primary/20 text-sm font-mono truncate">
-                  123.456.789-00
-                </code>
-                <button 
-                  type="button"
-                  onClick={handleCopyPix}
-                  className="p-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all shadow-sm"
-                >
-                  {copiedPix ? <CheckCircle2 className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                </button>
-              </div>
+            <h2 className="text-2xl font-serif text-primary">Presentear</h2>
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/50">
+              <span className="text-sm font-medium text-foreground">{gift.name}</span>
+              <span className="font-serif text-primary font-medium">{formatPrice(gift.price)}</span>
             </div>
-
-            <button 
-              type="submit"
-              disabled={isReserving}
-              className="w-full py-4 bg-primary text-primary-foreground rounded-lg font-bold shadow-lg hover:shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-            >
-              {isReserving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmar Reserva'}
-            </button>
-          </form>
-        ) : (
-          <div className="p-8 text-center space-y-6 animate-in zoom-in-95 duration-500">
-            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-3xl font-serif text-primary">Reserva Confirmada!</h2>
-              <p className="text-foreground/80">
-                Obrigado pelo carinho, <strong>{confirmedGuestName}</strong>! Sua mensagem e reserva foram registradas.
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-xl text-sm italic text-muted-foreground">
-               Não se esqueça de realizar o PIX para concluir seu presente.
-            </div>
-            <button 
-              onClick={onClose}
-              className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium"
-            >
-              Fechar
-            </button>
           </div>
-        )}
+
+          {error && (
+            <div className="p-3 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm rounded-r flex items-center gap-2">
+              <X className="w-4 h-4 shrink-0" /> {error}
+            </div>
+          )}
+
+          {/* Seleção do método */}
+          {step === 'SELECT' && (
+            <div className="space-y-3">
+              <p className="text-sm text-center text-muted-foreground">Como você prefere pagar?</p>
+
+              <button
+                onClick={() => setStep('PIX_FORM')}
+                className="w-full p-4 flex items-center gap-4 border border-border rounded-xl hover:border-primary/50 hover:bg-muted/30 transition-all text-left group"
+              >
+                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                  <QrCode className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">PIX</p>
+                  <p className="text-xs text-muted-foreground">Confirmação em tempo real</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setStep('CARD')}
+                className="w-full p-4 flex items-center gap-4 border border-border rounded-xl hover:border-primary/50 hover:bg-muted/30 transition-all text-left group"
+              >
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Cartão de Crédito</p>
+                  <p className="text-xs text-muted-foreground">Parcelamento em até 12x sem juros</p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Formulário de dados do comprador para PIX */}
+          {step === 'PIX_FORM' && (
+            <form onSubmit={handleCreatePix} className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Informe seus dados para identificarmos o pagamento.
+              </p>
+
+              <input
+                required
+                placeholder="Nome completo"
+                value={buyer.name}
+                onChange={(e) => setBuyer((b) => ({ ...b, name: e.target.value }))}
+                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              />
+              <input
+                required
+                type="email"
+                placeholder="E-mail"
+                value={buyer.email}
+                onChange={(e) => setBuyer((b) => ({ ...b, email: e.target.value }))}
+                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  required
+                  placeholder="CPF (só números)"
+                  maxLength={11}
+                  inputMode="numeric"
+                  value={buyer.cpf}
+                  onChange={(e) => setBuyer((b) => ({ ...b, cpf: e.target.value.replace(/\D/g, '') }))}
+                  className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                />
+                <input
+                  required
+                  placeholder="Telefone"
+                  inputMode="tel"
+                  value={buyer.phone}
+                  onChange={(e) => setBuyer((b) => ({ ...b, phone: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-4 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isLoading
+                  ? <><Loader2 className="w-5 h-5 animate-spin" /> Gerando PIX...</>
+                  : 'Gerar QR Code PIX'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Voltar
+              </button>
+            </form>
+          )}
+
+          {/* QR Code + listener em tempo real */}
+          {step === 'PIX_PAYMENT' && pixResult && (
+            <>
+              <PixPayment
+                paymentId={pixResult.paymentId}
+                pixQrCode={pixResult.pixQrCode}
+                pixCopyPaste={pixResult.pixCopyPaste}
+                onRetry={handleReset}
+              />
+              <button
+                onClick={onClose}
+                className="w-full py-3 bg-muted text-foreground rounded-lg text-sm hover:bg-muted-foreground/20 transition-colors"
+              >
+                Fechar
+              </button>
+            </>
+          )}
+
+          {/* Formulário de cartão (coleta tudo internamente) */}
+          {step === 'CARD' && (
+            <>
+              <CardPayment giftId={gift.id} amount={gift.price} />
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Voltar
+              </button>
+            </>
+          )}
+
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Presentes: leitura pública, escrita apenas via Admin SDK (server actions)
+    match /gifts/{giftId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Convidados: nenhum acesso público
+    match /guests/{guestId} {
+      allow read, write: if false;
+    }
+
+    // Mensagens de presentes: nenhum acesso público
+    match /gift_messages/{messageId} {
+      allow read, write: if false;
+    }
+
+    // Pagamentos:
+    // - GET por ID permitido (segurança por obscuridade: IDs são UUIDs do Asaas)
+    // - Listagem bloqueada (ninguém pode enumerar pagamentos)
+    // - Escrita bloqueada para o client (toda escrita vem via Admin SDK nas rotas /api)
+    match /payments/{paymentId} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if false;
+    }
+  }
+}
