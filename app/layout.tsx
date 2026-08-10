@@ -20,9 +20,26 @@ const playfair = Playfair_Display({
   style: ["normal", "italic"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_URL ?? 'https://raquelefilipe.vercel.app';
+
 export const metadata: Metadata = {
-  title: "Raquel & Filipe",
-  description: "Site oficial do casamento de Raquel e Filipe. Encontre informações sobre a cerimônia, lista de presentes e muito mais.",
+  title: { default: 'Raquel & Filipe', template: '%s | Raquel & Filipe' },
+  description: 'Você está convidado! Casamento de Raquel & Filipe — 29 de Novembro de 2026, Arujá, SP.',
+  metadataBase: new URL(BASE_URL),
+  openGraph: {
+    type: 'website',
+    locale: 'pt_BR',
+    url: BASE_URL,
+    siteName: 'Raquel & Filipe',
+    title: 'Raquel & Filipe — Casamento 29.11.2026',
+    description: 'Você está convidado! Celebre conosco em 29 de Novembro de 2026, Arujá, SP.',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Raquel & Filipe — Casamento 29.11.2026' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Raquel & Filipe — Casamento 29.11.2026',
+    description: 'Você está convidado! Celebre conosco em 29 de Novembro de 2026, Arujá, SP.',
+  },
 };
 
 export default function RootLayout({

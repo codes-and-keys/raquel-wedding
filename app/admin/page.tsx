@@ -2,7 +2,6 @@ import { adminDb } from '@/lib/FirebaseAdmin';
 import AdminClient from './adminClient';
 import { logout } from '@/actions/auth';
 import { Gift } from '@/types/gift';
-import { Message } from '@/types/message';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,13 +13,38 @@ type Guest = {
   updatedAt?: string;
 };
 
+export type PaymentEntry = {
+  id: string;
+  buyerName: string;
+  method: 'PIX' | 'CREDIT_CARD';
+  status: string;
+  amount: number;
+  installments: number;
+  giftName: string;
+  createdAt: string;
+  confirmedAt?: string;
+};
+
+export type SongEntry = {
+  id: string;
+  guestName: string;
+  song: string;
+  artist?: string;
+  createdAt: string;
+};
+
+export type WallEntry = {
+  id: string;
+  guestName: string;
+  message: string;
+  createdAt: string;
+};
+
 async function getAdminData() {
   const guestsSnap = await adminDb.collection('guests').get();
   const guests: Guest[] = [];
-
   guestsSnap.forEach((doc) => {
-    const data = doc.data() as Guest;
-    data.id = doc.id;
+    const data = doc.data();
     guests.push({
       id: doc.id,
       code: data.code,
@@ -29,13 +53,14 @@ async function getAdminData() {
       updatedAt: data.updatedAt ? data.updatedAt.toString() : undefined,
     });
   });
-
   guests.sort((a, b) => a.name.localeCompare(b.name));
 
   const giftsSnap = await adminDb.collection('gifts').get();
   const gifts: Gift[] = [];
+  const giftNameMap: Record<string, string> = {};
   giftsSnap.forEach((doc) => {
     const data = doc.data();
+    giftNameMap[doc.id] = data.name;
     gifts.push({
       id: doc.id,
       name: data.name,
@@ -46,30 +71,57 @@ async function getAdminData() {
       externalUrl: data.externalUrl || '',
       inventory: data.inventory || 0,
       reservedCount: data.reservedCount || 0,
-      isAvailable: (data.inventory || 0) > (data.reservedCount || 0)
+      isAvailable: (data.inventory || 0) > (data.reservedCount || 0),
     });
   });
 
-  const messagesSnap = await adminDb.collection('gift_messages').orderBy('createdAt', 'desc').get();
-  const messages: Message[] = [];
-  messagesSnap.forEach((doc) => {
+  const paymentsSnap = await adminDb.collection('payments').orderBy('createdAt', 'desc').get();
+  const payments: PaymentEntry[] = [];
+  paymentsSnap.forEach((doc) => {
     const data = doc.data();
-    messages.push({
+    payments.push({
       id: doc.id,
-      amount: data.amount,
-      giftId: data.giftId, 
+      buyerName: data.buyerName,
+      method: data.method,
       status: data.status,
-      guestName: data.guestName,
-      giftName: data.giftName,
-      message: data.message,
-      createdAt: data.createdAt.toDate().toISOString(),
+      amount: data.amount,
+      installments: data.installments || 1,
+      giftName: giftNameMap[data.giftId] ?? data.giftId,
+      createdAt: data.createdAt?.toDate().toISOString() ?? new Date().toISOString(),
+      confirmedAt: data.confirmedAt?.toDate().toISOString(),
     });
   });
-  return { guests, gifts, messages };
+
+  const songsSnap = await adminDb.collection('song_suggestions').orderBy('createdAt', 'desc').get();
+  const songs: SongEntry[] = [];
+  songsSnap.forEach((doc) => {
+    const data = doc.data();
+    songs.push({
+      id: doc.id,
+      guestName: data.guestName,
+      song: data.song,
+      artist: data.artist,
+      createdAt: data.createdAt?.toDate().toISOString() ?? new Date().toISOString(),
+    });
+  });
+
+  const wallSnap = await adminDb.collection('wall_messages').orderBy('createdAt', 'desc').get();
+  const wallMessages: WallEntry[] = [];
+  wallSnap.forEach((doc) => {
+    const data = doc.data();
+    wallMessages.push({
+      id: doc.id,
+      guestName: data.guestName,
+      message: data.message,
+      createdAt: data.createdAt?.toDate().toISOString() ?? new Date().toISOString(),
+    });
+  });
+
+  return { guests, gifts, payments, songs, wallMessages };
 }
 
 export default async function AdminDashboard() {
-  const { guests, gifts, messages } = await getAdminData();
+  const { guests, gifts, payments, songs, wallMessages } = await getAdminData();
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
@@ -82,7 +134,13 @@ export default async function AdminDashboard() {
         </form>
       </header>
 
-      <AdminClient initialGuests={guests} initialGifts={gifts} initialMessages={messages} />
+      <AdminClient
+        initialGuests={guests}
+        initialGifts={gifts}
+        initialPayments={payments}
+        initialSongs={songs}
+        initialWallMessages={wallMessages}
+      />
     </div>
   );
 }

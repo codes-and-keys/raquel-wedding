@@ -5,7 +5,6 @@ import { Gift } from "@/types/gift";
 import GiftModal from './giftModal';
 import GiftCard from '@/components/GiftCard';
 import CategoryFilter from '@/components/CategoryFilter';
-import PixSection from '@/components/PixSection';
 
 export default function GiftsList({ initialGifts }: { initialGifts: Gift[] }) {
   const [activeCategory, setActiveCategory] = useState<string>("Todos");
@@ -55,11 +54,6 @@ export default function GiftsList({ initialGifts }: { initialGifts: Gift[] }) {
         <GiftModal gift={selectedGift} onClose={() => setSelectedGift(null)} />
       )}
 
-      <PixSection
-        pixKey="123.456.789-00"
-        holderName="Raquel Pereira"
-        bankName="Nubank"
-      />
     </div>
   );
 }

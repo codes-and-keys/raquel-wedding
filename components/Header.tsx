@@ -9,15 +9,20 @@ const navLinks = [
   { name: 'Detalhes do Casamento', href: '/' },
   { name: 'RSVP', href: '/rsvp' },
   { name: 'Presentes', href: '/presentes' },
+  { name: 'Mural', href: '/mural' },
 ];
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => {
+  // Fecha o menu ao navegar — ajuste de estado em resposta a uma prop que mudou,
+  // feito durante a renderização (padrão recomendado pelo React) em vez de um efeito.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';

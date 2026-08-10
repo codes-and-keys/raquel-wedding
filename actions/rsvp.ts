@@ -51,11 +51,8 @@ export async function submitRsvp(payload: { id: string; isAttending: boolean }) 
 
   try {
     const docRef = adminDb.collection('guests').doc(safeData.data.id);
-    
-    await docRef.update({
-      isAttending: safeData.data.isAttending,
-      updatedAt: new Date(),
-    });
+
+    await docRef.update({ isAttending: safeData.data.isAttending, updatedAt: new Date() });
 
     return { success: true };
   } catch (error) {

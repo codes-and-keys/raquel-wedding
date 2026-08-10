@@ -18,7 +18,7 @@ export default function RSVPPage() {
 
       <footer className="py-6 text-center border-t border-border bg-card mt-auto">
         <p className="text-sm text-foreground/60 font-sans">
-          Raquel & Filipe • 16.11.2026
+          Raquel & Filipe • 29.11.2026
         </p>
       </footer>
     </main>

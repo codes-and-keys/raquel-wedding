@@ -19,6 +19,7 @@ export interface PaymentDoc {
   giftId: string;
   /** Nome completo do comprador — nunca armazenar CPF neste documento */
   buyerName: string;
+  buyerEmail: string;
   method: PaymentMethod;
   status: PaymentStatus;
   amount: number;

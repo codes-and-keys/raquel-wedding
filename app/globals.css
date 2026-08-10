@@ -4,29 +4,29 @@
 
 :root {
   --font-size: 16px;
-  --background: #FFF9F5;
-  --foreground: #4A3C2E;
+  --background: #FFF8F3;
+  --foreground: #1A1108;
   --card: #ffffff;
-  --card-foreground: #4A3C2E;
+  --card-foreground: #1A1108;
   --popover: #ffffff;
-  --popover-foreground: #4A3C2E;
-  --primary: #C39E81;
+  --popover-foreground: #1A1108;
+  --primary: #8B5E3C;
   --primary-foreground: #ffffff;
-  --secondary: #E6B8A2;
-  --secondary-foreground: #4A3C2E;
-  --muted: #F7EDE3;
-  --muted-foreground: #8B7355;
-  --accent: #D4A574;
-  --accent-foreground: #4A3C2E;
-  --destructive: #d4183d;
+  --secondary: #D4A07A;
+  --secondary-foreground: #1A1108;
+  --muted: #F0E0D0;
+  --muted-foreground: #6B5040;
+  --accent: #C4824A;
+  --accent-foreground: #1A1108;
+  --destructive: #c41e3a;
   --destructive-foreground: #ffffff;
-  --border: rgba(195, 158, 129, 0.25);
+  --border: rgba(139, 94, 60, 0.18);
   --input: transparent;
-  --input-background: #FFFCF8;
-  --switch-background: #E6D5C3;
+  --input-background: #FFFCF9;
+  --switch-background: #DEC9B4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #C39E81;
+  --ring: #8B5E3C;
   --radius: 0.625rem;
 }
 
@@ -104,6 +104,38 @@
   input {
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer components {
+  /* Campos de formulário */
+  .field {
+    @apply w-full px-4 py-3 bg-input-background border border-border rounded-lg text-sm
+           focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all
+           placeholder:text-muted-foreground/60 disabled:opacity-50;
+  }
+
+  /* Botão primário — só cores/forma, tamanho definido no uso */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-primary text-primary-foreground font-medium rounded-lg
+           hover:bg-primary/90 transition-all active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Botão secundário / neutro */
+  .btn-muted {
+    @apply inline-flex items-center justify-center gap-2
+           bg-muted text-foreground font-medium rounded-lg
+           hover:bg-muted-foreground/20 transition-all active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Botão fantasma — só texto */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 text-sm
+           text-muted-foreground hover:text-foreground transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 }
 

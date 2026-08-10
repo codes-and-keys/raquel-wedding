@@ -43,12 +43,12 @@ export default function GiftCard({ gift, onReserve }: GiftCardProps) {
           {gift.isAvailable ? (
             <button
               onClick={() => onReserve(gift)}
-              className="w-full py-3 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm active:scale-[0.98]"
+              className="btn-primary w-full py-3 text-sm shadow-sm"
             >
               Reservar
             </button>
           ) : (
-            <div className="bg-muted text-muted-foreground w-full py-3 flex items-center justify-center gap-2 rounded-lg font-medium">
+            <div className="btn-muted w-full py-3 text-sm cursor-default">
               Já Reservado!
             </div>
           )}

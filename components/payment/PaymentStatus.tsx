@@ -13,6 +13,7 @@ interface PaymentStatusProps {
 
 const SUCCESS_STATUSES: PaymentStatusType[] = ['CONFIRMED', 'RECEIVED'];
 const FAILED_STATUSES: PaymentStatusType[] = ['REFUSED', 'OVERDUE', 'DELETED', 'REFUNDED'];
+const POLL_INTERVAL_MS = 5000;
 
 function toDisplayStatus(status: PaymentStatusType): 'PENDING' | 'SUCCESS' | 'FAILED' {
   if (SUCCESS_STATUSES.includes(status)) return 'SUCCESS';
@@ -23,14 +24,41 @@ function toDisplayStatus(status: PaymentStatusType): 'PENDING' | 'SUCCESS' | 'FA
 export default function PaymentStatus({ paymentId, onRetry }: PaymentStatusProps) {
   const [status, setStatus] = useState<PaymentStatusType>('PENDING');
 
+  // Listener em tempo real via Firestore (ativo quando o webhook entrega o evento)
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'payments', paymentId), (snap) => {
-      if (snap.exists()) {
-        setStatus(snap.data().status as PaymentStatusType);
-      }
-    });
+    const unsubscribe = onSnapshot(
+      doc(db, 'payments', paymentId),
+      (snap) => {
+        if (snap.exists()) setStatus(snap.data().status as PaymentStatusType);
+      },
+      (err) => {
+        // Permissão negada ou erro de rede — o polling abaixo cobre este caso
+        console.warn('[PaymentStatus] onSnapshot:', err.message);
+      },
+    );
     return unsubscribe;
   }, [paymentId]);
+
+  // Polling a cada 5s como fallback: consulta nosso endpoint que sincroniza com o Asaas.
+  // Garante propagação mesmo que o webhook não chegue ou o Firestore esteja inacessível.
+  useEffect(() => {
+    if (toDisplayStatus(status) !== 'PENDING') return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/payments/${paymentId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status) setStatus(data.status as PaymentStatusType);
+      } catch {
+        // Ignora erros de rede silenciosamente
+      }
+    };
+
+    poll(); // Primeira consulta imediata
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [paymentId, status]);
 
   const display = toDisplayStatus(status);
 

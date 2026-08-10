@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock, CreditCard, User } from 'lucide-react';
 import PaymentStatus from './PaymentStatus';
+import { maskCPF, maskPhone, maskCard, maskExpiry, maskCEP } from '@/lib/masks';
+import { isValidCPF, isValidPhone, isValidCard, isValidExpiry, detectCardBrand } from '@/lib/validate';
 
 interface CardPaymentProps {
   giftId: string;
@@ -11,65 +13,103 @@ interface CardPaymentProps {
 
 type Step = 'FORM' | 'PROCESSING' | 'STATUS';
 
-interface BuyerState {
-  name: string;
-  email: string;
-  cpf: string;
-  phone: string;
-  postalCode: string;
-  addressNumber: string;
-}
-
-interface CardState {
-  holderName: string;
-  number: string;
-  expiryMonth: string;
-  expiryYear: string;
-  ccv: string;
-}
-
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getMaxInstallments(amount: number): number {
+  if (amount < 100) return 1;
+  if (amount < 200) return 3;
+  if (amount < 400) return 6;
+  return 12;
+}
+
+function SectionHeader({ num, icon: Icon, label }: { num: number; icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold shrink-0">
+        {num}
+      </span>
+      <Icon className="w-4 h-4 text-primary/70" />
+      <span className="text-sm font-medium text-foreground/80">{label}</span>
+    </div>
+  );
+}
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <p className="mt-1.5 text-xs text-destructive">{msg}</p>;
 }
 
 export default function CardPayment({ giftId, amount }: CardPaymentProps) {
   const [step, setStep] = useState<Step>('FORM');
   const [installments, setInstallments] = useState(1);
   const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [buyer, setBuyer] = useState<BuyerState>({
+  const [buyer, setBuyer] = useState({
     name: '', email: '', cpf: '', phone: '', postalCode: '', addressNumber: '',
   });
 
-  const [card, setCard] = useState<CardState>({
-    holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '',
+  const [card, setCard] = useState({
+    holderName: '', number: '', expiry: '', ccv: '',
   });
 
   const installmentValue = Math.round((amount / installments) * 100) / 100;
+  const brand = detectCardBrand(card.number);
+  const cvvLen = brand === 'Amex' ? 4 : 3;
 
-  const handleReset = () => {
-    setStep('FORM');
-    setPaymentId(null);
-    setError(null);
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (buyer.name.trim().length < 3) e.name = 'Informe seu nome completo';
+    if (!/\S+@\S+\.\S+/.test(buyer.email)) e.email = 'E-mail inválido';
+    if (!isValidCPF(buyer.cpf)) e.cpf = 'CPF inválido';
+    if (!isValidPhone(buyer.phone)) e.phone = 'Telefone inválido';
+    if (buyer.postalCode.replace(/\D/g, '').length !== 8) e.postalCode = 'CEP inválido';
+    if (!buyer.addressNumber.trim()) e.addressNumber = 'Número obrigatório';
+    if (card.holderName.trim().length < 3) e.holderName = 'Nome muito curto';
+    if (!isValidCard(card.number)) e.cardNumber = 'Número de cartão inválido';
+    if (!isValidExpiry(card.expiry)) e.expiry = 'Validade inválida ou expirada';
+    if (card.ccv.length < cvvLen) e.ccv = `CVV deve ter ${cvvLen} dígitos`;
+    return e;
   };
+
+  const clearErr = (field: string) => {
+    if (errors[field]) setErrors(e => { const n = { ...e }; delete n[field]; return n; });
+  };
+
+  const handleReset = () => { setStep('FORM'); setPaymentId(null); setApiError(null); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    setApiError(null);
     setStep('PROCESSING');
 
     try {
-      // Step 1: tokenizar cartão (cria customer + tokeniza)
+      const [expiryMonth, expiryYearRaw] = card.expiry.split('/');
+      const expiryYear = expiryYearRaw?.length === 2 ? `20${expiryYearRaw}` : (expiryYearRaw ?? '');
+
       const tokenRes = await fetch('/api/payments/card-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buyer, card }),
+        body: JSON.stringify({
+          buyer,
+          card: {
+            holderName: card.holderName,
+            number: card.number.replace(/\s/g, ''),
+            expiryMonth: expiryMonth?.padStart(2, '0') ?? '',
+            expiryYear,
+            ccv: card.ccv,
+          },
+        }),
       });
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok) throw new Error(tokenData.error ?? 'Erro ao processar cartão');
 
-      // Step 2: criar cobrança usando o customerId já existente (sem duplicar customer)
       const paymentRes = await fetch('/api/payments/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +128,7 @@ export default function CardPayment({ giftId, amount }: CardPaymentProps) {
       setPaymentId(paymentData.paymentId);
       setStep('STATUS');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      setApiError(err instanceof Error ? err.message : 'Erro desconhecido');
       setStep('FORM');
     }
   };
@@ -98,159 +138,191 @@ export default function CardPayment({ giftId, amount }: CardPaymentProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      {apiError && (
         <div className="p-3 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm rounded-r">
-          {error}
+          {apiError}
         </div>
       )}
 
-      {/* Parcelamento */}
+      {/* ① Parcelamento */}
       <div>
-        <label className="block text-sm font-medium text-muted-foreground mb-1.5">
-          Parcelamento
-        </label>
+        <SectionHeader num={1} icon={CreditCard} label="Parcelamento" />
         <select
           value={installments}
           onChange={(e) => setInstallments(Number(e.target.value))}
-          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+          className="field"
         >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => {
+          {Array.from({ length: getMaxInstallments(amount) }, (_, i) => i + 1).map((n) => {
             const val = Math.round((amount / n) * 100) / 100;
             return (
               <option key={n} value={n}>
-                {n}x de R$ {formatCurrency(val)}{n === 1 ? ' (à vista)' : ' sem juros'}
+                {n}x de R$ {formatCurrency(val)}{n === 1 ? ' (à vista)' : ''}
               </option>
             );
           })}
         </select>
       </div>
 
-      {/* Dados pessoais */}
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-muted-foreground">Dados do comprador</legend>
+      <div className="h-px bg-border/60" />
 
-        <input
-          required
-          placeholder="Nome completo"
-          value={buyer.name}
-          onChange={(e) => setBuyer((b) => ({ ...b, name: e.target.value }))}
-          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-        />
+      {/* ② Dados pessoais */}
+      <div>
+        <SectionHeader num={2} icon={User} label="Dados do comprador" />
+        <div className="space-y-3">
+          <div>
+            <input
+              placeholder="Nome completo"
+              value={buyer.name}
+              onChange={(e) => { setBuyer(b => ({ ...b, name: e.target.value })); clearErr('name'); }}
+              className={`field ${errors.name ? 'border-destructive focus:ring-destructive/30' : ''}`}
+            />
+            <FieldError msg={errors.name} />
+          </div>
 
-        <input
-          required
-          type="email"
-          placeholder="E-mail"
-          value={buyer.email}
-          onChange={(e) => setBuyer((b) => ({ ...b, email: e.target.value }))}
-          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-        />
+          <div>
+            <input
+              type="email"
+              placeholder="E-mail"
+              value={buyer.email}
+              onChange={(e) => { setBuyer(b => ({ ...b, email: e.target.value })); clearErr('email'); }}
+              className={`field ${errors.email ? 'border-destructive focus:ring-destructive/30' : ''}`}
+            />
+            <FieldError msg={errors.email} />
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            required
-            placeholder="CPF (somente números)"
-            maxLength={11}
-            inputMode="numeric"
-            value={buyer.cpf}
-            onChange={(e) => setBuyer((b) => ({ ...b, cpf: e.target.value.replace(/\D/g, '') }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-          />
-          <input
-            required
-            placeholder="Telefone"
-            inputMode="tel"
-            value={buyer.phone}
-            onChange={(e) => setBuyer((b) => ({ ...b, phone: e.target.value }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <input
+                placeholder="CPF"
+                inputMode="numeric"
+                value={buyer.cpf}
+                onChange={(e) => {
+                  const masked = maskCPF(e.target.value);
+                  setBuyer(b => ({ ...b, cpf: masked }));
+                  const digits = masked.replace(/\D/g, '');
+                  if (digits.length === 11) {
+                    setErrors(prev => ({ ...prev, cpf: isValidCPF(masked) ? '' : 'CPF inválido' }));
+                  } else if (errors.cpf) {
+                    clearErr('cpf');
+                  }
+                }}
+                className={`field ${errors.cpf ? 'border-destructive focus:ring-destructive/30' : ''}`}
+              />
+              <FieldError msg={errors.cpf} />
+            </div>
+            <div>
+              <input
+                placeholder="Telefone"
+                inputMode="tel"
+                value={buyer.phone}
+                onChange={(e) => { setBuyer(b => ({ ...b, phone: maskPhone(e.target.value) })); clearErr('phone'); }}
+                className={`field ${errors.phone ? 'border-destructive focus:ring-destructive/30' : ''}`}
+              />
+              <FieldError msg={errors.phone} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-5 gap-3">
+            <div className="col-span-3">
+              <input
+                placeholder="CEP"
+                inputMode="numeric"
+                value={buyer.postalCode}
+                onChange={(e) => { setBuyer(b => ({ ...b, postalCode: maskCEP(e.target.value) })); clearErr('postalCode'); }}
+                className={`field ${errors.postalCode ? 'border-destructive focus:ring-destructive/30' : ''}`}
+              />
+              <FieldError msg={errors.postalCode} />
+            </div>
+            <div className="col-span-2">
+              <input
+                placeholder="Número"
+                value={buyer.addressNumber}
+                onChange={(e) => { setBuyer(b => ({ ...b, addressNumber: e.target.value })); clearErr('addressNumber'); }}
+                className={`field ${errors.addressNumber ? 'border-destructive focus:ring-destructive/30' : ''}`}
+              />
+              <FieldError msg={errors.addressNumber} />
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            required
-            placeholder="CEP"
-            maxLength={9}
-            inputMode="numeric"
-            value={buyer.postalCode}
-            onChange={(e) => setBuyer((b) => ({ ...b, postalCode: e.target.value.replace(/\D/g, '') }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-          />
-          <input
-            required
-            placeholder="Número (endereço)"
-            value={buyer.addressNumber}
-            onChange={(e) => setBuyer((b) => ({ ...b, addressNumber: e.target.value }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-          />
+      <div className="h-px bg-border/60" />
+
+      {/* ③ Cartão */}
+      <div>
+        <SectionHeader num={3} icon={Lock} label="Dados do cartão" />
+        <div className="space-y-3">
+          <div>
+            <input
+              placeholder="Nome impresso no cartão"
+              value={card.holderName}
+              onChange={(e) => { setCard(c => ({ ...c, holderName: e.target.value.toUpperCase() })); clearErr('holderName'); }}
+              className={`field uppercase tracking-wide ${errors.holderName ? 'border-destructive focus:ring-destructive/30' : ''}`}
+            />
+            <FieldError msg={errors.holderName} />
+          </div>
+
+          <div>
+            <div className="relative">
+              <input
+                placeholder="0000 0000 0000 0000"
+                inputMode="numeric"
+                value={card.number}
+                onChange={(e) => { setCard(c => ({ ...c, number: maskCard(e.target.value) })); clearErr('cardNumber'); }}
+                className={`field font-mono tracking-widest pr-20 ${errors.cardNumber ? 'border-destructive focus:ring-destructive/30' : ''}`}
+              />
+              {brand && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-primary/70 bg-primary/8 px-2 py-0.5 rounded">
+                  {brand}
+                </span>
+              )}
+            </div>
+            <FieldError msg={errors.cardNumber} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <input
+                placeholder="MM/AA"
+                inputMode="numeric"
+                value={card.expiry}
+                onChange={(e) => { setCard(c => ({ ...c, expiry: maskExpiry(e.target.value, c.expiry) })); clearErr('expiry'); }}
+                className={`field font-mono text-center ${errors.expiry ? 'border-destructive focus:ring-destructive/30' : ''}`}
+                maxLength={5}
+              />
+              <FieldError msg={errors.expiry} />
+            </div>
+            <div>
+              <input
+                placeholder={`CVV`}
+                inputMode="numeric"
+                value={card.ccv}
+                onChange={(e) => { setCard(c => ({ ...c, ccv: e.target.value.replace(/\D/g, '').slice(0, cvvLen) })); clearErr('ccv'); }}
+                className={`field font-mono text-center ${errors.ccv ? 'border-destructive focus:ring-destructive/30' : ''}`}
+                maxLength={cvvLen}
+              />
+              <FieldError msg={errors.ccv} />
+            </div>
+          </div>
         </div>
-      </fieldset>
-
-      {/* Dados do cartão */}
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-muted-foreground">Dados do cartão</legend>
-
-        <input
-          required
-          placeholder="Nome impresso no cartão"
-          value={card.holderName}
-          onChange={(e) => setCard((c) => ({ ...c, holderName: e.target.value.toUpperCase() }))}
-          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all uppercase tracking-wider"
-        />
-
-        <input
-          required
-          placeholder="Número do cartão"
-          maxLength={16}
-          inputMode="numeric"
-          value={card.number}
-          onChange={(e) => setCard((c) => ({ ...c, number: e.target.value.replace(/\D/g, '') }))}
-          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-mono tracking-widest"
-        />
-
-        <div className="grid grid-cols-3 gap-3">
-          <input
-            required
-            placeholder="MM"
-            maxLength={2}
-            inputMode="numeric"
-            value={card.expiryMonth}
-            onChange={(e) => setCard((c) => ({ ...c, expiryMonth: e.target.value.replace(/\D/g, '') }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 text-center font-mono transition-all"
-          />
-          <input
-            required
-            placeholder="AAAA"
-            maxLength={4}
-            inputMode="numeric"
-            value={card.expiryYear}
-            onChange={(e) => setCard((c) => ({ ...c, expiryYear: e.target.value.replace(/\D/g, '') }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 text-center font-mono transition-all"
-          />
-          <input
-            required
-            placeholder="CVV"
-            maxLength={4}
-            inputMode="numeric"
-            value={card.ccv}
-            onChange={(e) => setCard((c) => ({ ...c, ccv: e.target.value.replace(/\D/g, '') }))}
-            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 text-center font-mono transition-all"
-          />
-        </div>
-      </fieldset>
+      </div>
 
       <button
         type="submit"
         disabled={step === 'PROCESSING'}
-        className="w-full py-4 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.99]"
+        className="btn-primary w-full py-4 text-base shadow-md shadow-primary/20"
       >
         {step === 'PROCESSING' ? (
           <><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>
         ) : (
-          `Pagar ${installments}x de R$ ${formatCurrency(installmentValue)}`
+          <><Lock className="w-4 h-4" /> Pagar {installments}x de R$ {formatCurrency(installmentValue)}</>
         )}
       </button>
+
+      <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+        <Lock className="w-3 h-3" /> Pagamento processado com segurança via Asaas
+      </p>
     </form>
   );
 }

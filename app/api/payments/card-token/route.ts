@@ -3,7 +3,8 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { asaas } from '@/lib/asaas';
+import { asaas, AsaasError } from '@/lib/asaas';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const bodySchema = z.object({
   buyer: z.object({
@@ -24,6 +25,14 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`card-token:${ip}`, 5, 60_000)) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde um momento e tente novamente.' },
+      { status: 429 },
+    );
+  }
+
   try {
     const raw = await request.json();
     const parsed = bodySchema.safeParse(raw);
@@ -37,7 +46,13 @@ export async function POST(request: NextRequest) {
 
     const { buyer, card } = parsed.data;
 
-    // remoteIp extraído do request no servidor — nunca confiar no valor vindo do client (correção #3)
+    // Sanitiza CPF e telefone (só dígitos); CEP mantém formato XXXXX-XXX que o Asaas espera
+    const cpf        = buyer.cpf.replace(/\D/g, '');
+    const phone      = buyer.phone.replace(/\D/g, '');
+    const postalDigits = buyer.postalCode.replace(/\D/g, '');
+    const postalCode   = `${postalDigits.slice(0, 5)}-${postalDigits.slice(5)}`;
+
+    // remoteIp extraído dos headers — nunca confiar no valor vindo do client
     const remoteIp =
       request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
       request.headers.get('x-real-ip') ??
@@ -49,8 +64,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         name: buyer.name,
         email: buyer.email,
-        cpfCnpj: buyer.cpf,
-        mobilePhone: buyer.phone,
+        cpfCnpj: cpf,
+        mobilePhone: phone,
       }),
     });
 
@@ -58,7 +73,7 @@ export async function POST(request: NextRequest) {
     const tokenResult = await asaas<{
       creditCardToken: string;
       creditCardBrand: string;
-      creditCardNumber: string; // Asaas retorna apenas os últimos 4 dígitos mascarados
+      creditCardNumber: string;
     }>('/creditCard/tokenize', {
       method: 'POST',
       body: JSON.stringify({
@@ -73,10 +88,10 @@ export async function POST(request: NextRequest) {
         creditCardHolderInfo: {
           name: buyer.name,
           email: buyer.email,
-          cpfCnpj: buyer.cpf,
-          postalCode: buyer.postalCode,
+          cpfCnpj: cpf,
+          postalCode,
           addressNumber: buyer.addressNumber,
-          phone: buyer.phone,
+          phone,
         },
         remoteIp,
       }),
@@ -90,7 +105,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[payments/card-token]', error);
-    const message = error instanceof Error ? error.message : 'Erro ao tokenizar cartão';
+    const message = error instanceof AsaasError
+      ? error.userMessage()
+      : 'Erro ao processar cartão. Tente novamente.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

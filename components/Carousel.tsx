@@ -3,8 +3,9 @@
 import useEmblaCarousel from 'embla-carousel-react';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const slides = [1, 2, 3, 4];
+const slides = Array.from({ length: 22 }, (_, i) => `/photo-${String(i + 1).padStart(2, '0')}.jpg`);
 
 export default function Carousel() {
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -42,36 +43,44 @@ export default function Carousel() {
     >
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-3 sm:gap-4 px-4">
-          {slides.map((i) => (
+          {slides.map((src, i) => (
             <div
-              key={i}
+              key={src}
               className="relative w-[82vw] sm:w-[65vw] md:w-[400px] h-[340px] sm:h-[400px] md:h-[500px] shrink-0 rounded-[var(--radius-xl)] overflow-hidden shadow-sm border border-border/50 bg-muted/20"
             >
               <Image
-                src={`/foto-${i}.jpg`}
-                alt={`Foto dos noivos ${i}`}
+                src={src}
+                alt={`Foto ${i + 1} dos noivos`}
                 fill
                 className="object-cover"
                 sizes="(max-width: 640px) 82vw, (max-width: 768px) 65vw, 400px"
-                priority={i === 1}
+                priority={i === 0}
               />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Indicadores de navegação */}
-      <div className="flex justify-center items-center gap-2 mt-5">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => emblaApi?.scrollTo(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === selectedIndex ? 'w-6 bg-primary' : 'w-1.5 bg-primary/25'
-            }`}
-            aria-label={`Ir para foto ${i + 1}`}
-          />
-        ))}
+      <button
+        onClick={() => emblaApi?.scrollPrev()}
+        className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-9 h-9 bg-background/80 backdrop-blur-sm border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-background transition-all"
+        aria-label="Foto anterior"
+      >
+        <ChevronLeft className="w-5 h-5 text-foreground" />
+      </button>
+
+      <button
+        onClick={() => emblaApi?.scrollNext()}
+        className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-9 h-9 bg-background/80 backdrop-blur-sm border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-background transition-all"
+        aria-label="Próxima foto"
+      >
+        <ChevronRight className="w-5 h-5 text-foreground" />
+      </button>
+
+      <div className="flex justify-center items-center mt-5">
+        <span className="text-xs text-muted-foreground font-medium tabular-nums">
+          {selectedIndex + 1} / {slides.length}
+        </span>
       </div>
     </div>
   );

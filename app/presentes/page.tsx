@@ -65,7 +65,7 @@ export default async function PresentesPage() {
 
       <footer className="py-8 text-center border-t border-border bg-card">
         <p className="text-sm text-foreground/60 font-sans">
-          Raquel & Filipe • 16.11.2026
+          Raquel & Filipe • 29.11.2026
         </p>
       </footer>
     </main>

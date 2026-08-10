@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getGuestByCode, submitRsvp } from '@/actions/rsvp';
 import { Loader2, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import StepIndicator from '@/components/StepIndicator';
@@ -12,7 +13,8 @@ type Guest = {
 };
 
 export default function RSVPForm() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const router = useRouter();
+  const [step, setStep] = useState<1 | 2>(1);
   const [code, setCode] = useState('');
   const [guest, setGuest] = useState<Guest | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +66,9 @@ export default function RSVPForm() {
       return;
     }
 
-    setStep(3);
-    setIsLoading(false);
+    router.push(
+      `/obrigado?name=${encodeURIComponent(guest.name)}&attending=${guest.isAttending}`
+    );
   };
 
   const handleReset = () => {
@@ -78,19 +81,15 @@ export default function RSVPForm() {
   return (
     <div className="w-full max-w-2xl mx-auto bg-card rounded-[var(--radius-xl)] shadow-sm border border-border p-5 sm:p-8 md:p-12 animate-in fade-in zoom-in-95 duration-500">
 
-      {step !== 3 && (
-        <>
-          <div className="text-center mb-6 md:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-serif text-primary mb-2 sm:mb-3">
-              Confirmação de Presença
-            </h1>
-            <p className="text-foreground/80 text-sm sm:text-base max-w-lg mx-auto">
-              Ficaremos muito felizes em ter você conosco neste dia tão especial.
-            </p>
-          </div>
-          <StepIndicator currentStep={step} totalSteps={2} />
-        </>
-      )}
+      <div className="text-center mb-6 md:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-serif text-primary mb-2 sm:mb-3">
+          Confirmação de Presença
+        </h1>
+        <p className="text-foreground/80 text-sm sm:text-base max-w-lg mx-auto">
+          Ficaremos muito felizes em ter você conosco neste dia tão especial.
+        </p>
+      </div>
+      <StepIndicator currentStep={step} totalSteps={2} />
 
       {error && (
         <div className="mb-6 w-full max-w-md mx-auto p-4 bg-destructive/10 border-l-4 border-destructive text-destructive text-sm rounded-r-md flex items-center gap-2">
@@ -111,7 +110,7 @@ export default function RSVPForm() {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="Ex: A7X9P"
-              className="w-full h-14 px-4 bg-input-background border border-border rounded-lg text-center text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/60 placeholder:tracking-normal placeholder:text-sm"
+              className="field h-14 text-center text-lg tracking-widest uppercase placeholder:tracking-normal"
               required
               maxLength={10}
               disabled={isLoading}
@@ -121,7 +120,7 @@ export default function RSVPForm() {
           <button
             type="submit"
             disabled={isLoading || code.length < 3}
-            className="w-full h-14 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
+            className="btn-primary w-full h-14 group"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -176,7 +175,7 @@ export default function RSVPForm() {
             <button
               onClick={handleSubmitRSVP}
               disabled={isLoading || guest.isAttending === null}
-              className="w-full h-14 flex items-center justify-center bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+              className="btn-primary w-full h-14"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmar Presença'}
             </button>
@@ -184,7 +183,7 @@ export default function RSVPForm() {
             <button
               onClick={handleReset}
               disabled={isLoading}
-              className="w-full py-2 sm:py-3 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              className="btn-ghost w-full py-2 sm:py-3"
             >
               Voltar / Inserir outro código
             </button>
@@ -192,23 +191,6 @@ export default function RSVPForm() {
         </div>
       )}
 
-      {step === 3 && (
-        <div className="text-center space-y-4 py-6 sm:py-8 animate-in fade-in zoom-in duration-500">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-            <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-serif text-primary">Obrigado!</h2>
-          <p className="text-foreground/80 text-base sm:text-lg">
-            Sua resposta foi registrada com sucesso.
-          </p>
-          <button
-            onClick={handleReset}
-            className="mt-6 sm:mt-8 px-6 py-2.5 bg-muted text-foreground rounded-lg font-medium hover:bg-muted-foreground/20 transition-colors"
-          >
-            Responder por outra pessoa
-          </button>
-        </div>
-      )}
     </div>
   );
 }
