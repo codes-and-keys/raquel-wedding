@@ -88,17 +88,10 @@ export default function Header() {
         }`}
         aria-label="Menu mobile"
       >
-        <div className="p-4 flex justify-between items-center border-b border-border">
+        <div className="p-4 flex items-center border-b border-border h-16">
           <span className="font-serif text-lg text-primary flex items-center gap-2">
             <Heart className="w-4 h-4 fill-current" /> Menu
           </span>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="text-primary/60 hover:text-primary transition-colors p-1"
-            aria-label="Fechar menu"
-          >
-            <X className="w-6 h-6" />
-          </button>
         </div>
 
         <nav className="flex flex-col gap-2 p-4" aria-label="Navegação mobile">
