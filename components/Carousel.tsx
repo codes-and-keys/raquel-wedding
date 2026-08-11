@@ -3,6 +3,7 @@
 import useEmblaCarousel from 'embla-carousel-react';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const slides = Array.from({ length: 22 }, (_, i) => `/photo-${String(i + 1).padStart(2, '0')}.jpg`);
@@ -115,7 +116,7 @@ export default function Carousel() {
         </span>
       </div>
 
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && createPortal(
         <div
           className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center animate-in fade-in duration-200"
           onClick={() => setLightboxIndex(null)}
@@ -141,7 +142,7 @@ export default function Carousel() {
               src={slides[lightboxIndex]}
               alt={`Foto ${lightboxIndex + 1} dos noivos em tela cheia`}
               fill
-              quality={95}
+              quality={100}
               className="object-contain"
               sizes="100vw"
               priority
@@ -159,7 +160,8 @@ export default function Carousel() {
           <span className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/70 font-medium tabular-nums">
             {lightboxIndex + 1} / {slides.length}
           </span>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
