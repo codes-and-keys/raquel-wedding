@@ -91,6 +91,7 @@ export default async function ThankYouPage({ searchParams }: Props) {
 
       <footer className="py-6 text-center border-t border-border bg-card">
         <p className="text-sm text-foreground/60">Com amor, Raquel & Filipe • 29.11.2026</p>
+        <p className="text-xs text-foreground/35 mt-1">Desenvolvido por Codes and Keys</p>
       </footer>
     </main>
   );

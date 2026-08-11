@@ -67,6 +67,9 @@ export default async function PresentesPage() {
         <p className="text-sm text-foreground/60 font-sans">
           Raquel & Filipe • 29.11.2026
         </p>
+        <p className="text-xs text-foreground/35 mt-1">
+          Desenvolvido por Codes and Keys
+        </p>
       </footer>
     </main>
   );

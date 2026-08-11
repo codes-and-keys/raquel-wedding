@@ -48,15 +48,6 @@ export default function Home() {
           </div>
 
           <CountdownTimer />
-
-          <div className="pt-2">
-            <Link
-              href="/rsvp"
-              className="btn-primary px-10 py-4 text-sm sm:text-base shadow-lg shadow-primary/25 hover:scale-105 hover:shadow-xl hover:shadow-primary/30"
-            >
-              Confirmar Presença
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -90,13 +81,13 @@ export default function Home() {
             <InfoCard icon={Shirt} title="Dress Code">
               <span className="block font-medium text-foreground/90 mb-2">Social</span>
               <span className="block mb-1">
-                Homens: camisa social, calça e sapato de couro — blazer ou terno são bem-vindos.
+                Homens: traje social — blazer ou terno são bem-vindos.
               </span>
               <span className="block mb-1">
-                Mulheres: vestido midi ou longo, ou conjunto social elegante.
+                Mulheres: traje social, vestido longo ou conjunto social elegante.
               </span>
               <span className="block mt-2 text-xs text-muted-foreground">
-                Evitar: jeans, tênis, shorts e tons de branco ou off-white.
+                Evitar: jeans, tênis, shorts, tons de marrom e de branco ou off-white.
               </span>
             </InfoCard>
           </AnimatedSection>
@@ -215,6 +206,9 @@ export default function Home() {
       <footer className="py-8 text-center border-t border-border bg-card">
         <p className="text-sm text-foreground/50">
           Com amor, Raquel & Filipe © 2026
+        </p>
+        <p className="text-xs text-foreground/35 mt-1">
+          Desenvolvido por Codes and Keys
         </p>
       </footer>
     </main>
