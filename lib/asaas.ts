@@ -1,5 +1,8 @@
+// Só ativa produção com "prod" ou "production" (case-insensitive) — qualquer outro
+// valor (vazio, "sandbox", typo) fica em sandbox por segurança, nunca o contrário.
+const ASAAS_ENV = process.env.ASAAS_ENV?.toLowerCase();
 const ASAAS_BASE =
-  process.env.ASAAS_ENV === 'prod'
+  ASAAS_ENV === 'prod' || ASAAS_ENV === 'production'
     ? 'https://api.asaas.com/v3'
     : 'https://api-sandbox.asaas.com/v3';
 

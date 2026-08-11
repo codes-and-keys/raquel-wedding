@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,12 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
+// Hospedada localmente (em vez de next/font/google) para o build não depender
+// da disponibilidade do fonts.gstatic.com — arquivos baixados de
+// github.com/google/fonts/tree/main/ofl/playfairdisplay (licença OFL em app/fonts/OFL.txt).
+const playfair = localFont({
+  src: [
+    { path: "./fonts/PlayfairDisplay-Variable.ttf", weight: "400 900", style: "normal" },
+    { path: "./fonts/PlayfairDisplay-Italic-Variable.ttf", weight: "400 900", style: "italic" },
+  ],
   variable: "--font-playfair",
-  subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_URL ?? 'https://raquelefilipe.vercel.app';
