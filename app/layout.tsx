@@ -25,7 +25,9 @@ const playfair = localFont({
   display: "swap",
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_URL ?? 'https://raquelefilipe.vercel.app';
+// Tolera esquecer o "https://" ao configurar a env var — new URL() quebra o build sem isso.
+const rawBaseUrl = process.env.NEXT_PUBLIC_URL ?? 'https://raquelefilipe.vercel.app';
+const BASE_URL = /^https?:\/\//.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`;
 
 export const metadata: Metadata = {
   title: { default: 'Raquel & Filipe', template: '%s | Raquel & Filipe' },
