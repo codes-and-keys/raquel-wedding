@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Menu, X } from 'lucide-react';
+import { Heart, Menu, X, Gift } from 'lucide-react';
 
 const navLinks = [
   { name: 'Detalhes do Casamento', href: '/' },
   { name: 'RSVP', href: '/rsvp' },
-  { name: 'Presentes', href: '/presentes' },
+  { name: 'Presentes', href: '/presentes', highlight: true },
   { name: 'Mural', href: '/mural' },
 ];
 
@@ -39,9 +39,22 @@ export default function Header() {
             <span className="font-serif text-xl font-medium">Raquel & Filipe</span>
           </Link>
 
-          <nav className="hidden md:flex gap-8" aria-label="Navegação principal">
+          <nav className="hidden md:flex items-center gap-8" aria-label="Navegação principal">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
+              if (link.highlight) {
+                return (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    aria-current={isActive ? 'page' : undefined}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:bg-primary/90 transition-all"
+                  >
+                    <Gift className="w-4 h-4" />
+                    {link.name}
+                  </Link>
+                );
+              }
               return (
                 <Link
                   key={link.name}
@@ -102,11 +115,14 @@ export default function Header() {
                 key={link.name}
                 href={link.href}
                 className={`text-lg p-3 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-primary/10 font-medium text-primary'
-                    : 'font-normal text-primary/80 hover:bg-muted hover:text-primary'
+                  link.highlight
+                    ? 'flex items-center gap-2 bg-primary text-primary-foreground font-medium hover:bg-primary/90'
+                    : isActive
+                      ? 'bg-primary/10 font-medium text-primary'
+                      : 'font-normal text-primary/80 hover:bg-muted hover:text-primary'
                 }`}
               >
+                {link.highlight && <Gift className="w-5 h-5" />}
                 {link.name}
               </Link>
             );

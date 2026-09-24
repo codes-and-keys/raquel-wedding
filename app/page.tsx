@@ -4,7 +4,7 @@ import InfoCard from '@/components/InfoCard';
 import CountdownTimer from '@/components/CountdownTimer';
 import AnimatedSection from '@/components/AnimatedSection';
 import Link from 'next/link';
-import { Clock, MapPin, CalendarHeart, Shirt, MessageSquareHeart } from 'lucide-react';
+import { Clock, MapPin, CalendarHeart, Shirt, MessageSquareHeart, Gift } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -48,6 +48,22 @@ export default function Home() {
           </div>
 
           <CountdownTimer />
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <Link
+              href="/rsvp"
+              className="btn-primary px-8 py-3.5 text-sm sm:text-base shadow-md shadow-primary/20 hover:scale-105"
+            >
+              Confirmar Presença
+            </Link>
+            <Link
+              href="/presentes"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 text-sm sm:text-base rounded-lg border-2 border-primary text-primary font-medium bg-card/60 hover:bg-primary hover:text-primary-foreground transition-all hover:scale-105 active:scale-[0.98]"
+            >
+              <Gift className="w-4 h-4" />
+              Lista de Presentes
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -112,6 +128,36 @@ export default function Home() {
             </InfoCard>
           </AnimatedSection>
         </div>
+      </section>
+
+      {/* Presentes */}
+      <section id="presentes" className="relative py-24 px-4 bg-primary text-primary-foreground overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute -top-20 left-1/4 w-96 h-96 rounded-full bg-secondary/20 blur-3xl" />
+          <div className="absolute -bottom-20 right-1/4 w-72 h-72 rounded-full bg-secondary/20 blur-3xl" />
+        </div>
+
+        <AnimatedSection className="relative max-w-2xl mx-auto text-center space-y-6">
+          <p className="text-xs uppercase tracking-[0.35em] text-primary-foreground/70 font-medium">
+            ✦ &nbsp;Lista de Presentes&nbsp; ✦
+          </p>
+          <div className="w-16 h-16 rounded-full bg-primary-foreground/10 flex items-center justify-center mx-auto">
+            <Gift className="w-8 h-8" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif leading-tight">
+            Um carinho para o nosso novo lar
+          </h2>
+          <p className="text-primary-foreground/85 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
+            Preparamos uma lista com muito carinho. Você pode escolher um presente ou contribuir via Pix, de forma simples e segura.
+          </p>
+          <Link
+            href="/presentes"
+            className="inline-flex items-center justify-center gap-2 px-10 py-4 bg-card text-primary font-medium rounded-lg shadow-lg transition-all hover:scale-105 active:scale-[0.98]"
+          >
+            <Gift className="w-4 h-4" />
+            Ver lista de presentes →
+          </Link>
+        </AnimatedSection>
       </section>
 
       {/* Mapa */}
@@ -204,6 +250,13 @@ export default function Home() {
       </section>
 
       <footer className="py-8 text-center border-t border-border bg-card">
+        <nav className="flex justify-center gap-4 mb-3 text-sm" aria-label="Links do rodapé">
+          <Link href="/presentes" className="font-medium text-primary hover:underline">Presentes</Link>
+          <span className="text-foreground/25">·</span>
+          <Link href="/rsvp" className="text-primary/70 hover:text-primary hover:underline">RSVP</Link>
+          <span className="text-foreground/25">·</span>
+          <Link href="/mural" className="text-primary/70 hover:text-primary hover:underline">Mural</Link>
+        </nav>
         <p className="text-sm text-foreground/50">
           Com amor, Raquel & Filipe © 2026
         </p>

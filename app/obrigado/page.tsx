@@ -1,7 +1,8 @@
 import Header from '@/components/Header';
 import SongSuggestionForm from '@/components/SongSuggestionForm';
+import GiftsCta from '@/components/GiftsCta';
 import Link from 'next/link';
-import { CheckCircle2, XCircle, Music, Gift, Home } from 'lucide-react';
+import { CheckCircle2, XCircle, Music, Home } from 'lucide-react';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -47,14 +48,6 @@ export default async function ThankYouPage({ searchParams }: Props) {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              {isAttending && (
-                <Link
-                  href="/presentes"
-                  className="btn-primary flex-1 py-3.5 text-sm"
-                >
-                  <Gift className="w-4 h-4" /> Ver lista de presentes
-                </Link>
-              )}
               <Link
                 href="/rsvp"
                 className="btn-muted flex-1 py-3.5 text-sm"
@@ -69,6 +62,9 @@ export default async function ThankYouPage({ searchParams }: Props) {
               </Link>
             </div>
           </div>
+
+          {/* Presentes — em destaque para todos */}
+          <GiftsCta variant={isAttending ? 'attending' : 'declined'} />
 
           {/* Sugestão de música — só para quem vai */}
           {isAttending && (
